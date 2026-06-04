@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Probability Modeling Tool</title>
+
+  <script 
+   src="https://cdn.jsdelivr.net/npm/chart.js"
+  ></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      background: #f5f7fa;
+    }
+    h1 { color: #2c3e50; }
+    section {
+      background: white;
+      padding: 15px;
+      margin: 20px auto;
+      border-radius: 10px;
+      width: 80%;
+      box-shadow: 0px 2px 10px rgba(0,0,0,0.1);
+    }
+    input, select {
+      margin: 5px;
+      padding: 5px;
+    }
+    button {
+      padding: 8px 15px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    canvas {
+      max-width: 700px;
+      margin: auto;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Probability Modeling Tool (C8 + C9)</h1>
+
+<!-- ================= C8 ================= -->
+<section>
+<h2>Simulation Mode (C8)</h2>
+
+<select id="distType">
+  <option value="normal">Normal</option>
+  <option value="uniform">Uniform</option>
+  <option value="triangular">Triangular</option>
+  <option value="linear">Linear</option>
+  <option value="piecewise">Piecewise</option>
+</select>
+
+<br>
+
+<input id="p1" value="0"> Param 1
+<input id="p2" value="1"> Param 2
+<input id="p3" value="5"> Param 3
+
+<br><br>
+
+From: <input id="a" value="-1">
+To: <input id="b" value="1">
+
+<br><br>
+
+<button onclick="draw()">Calculate</button>
+
+<canvas id="chart"></canvas>
+<h3 id="result"></h3>
+
+</section>
+
+<!-- ================= C9 ================= -->
+<section>
+
+<h2>Data Modeling (C9)</h2>
+
+<input type="file" id="fileInput">
+<button onclick="loadData()">Upload CSV</button>
+
+<canvas id="histChart"></canvas>
+<h3 id="analysis"></h3>
+
+</section>
+
+<!-- ================= AI ================= -->
+<section>
+<h2>AI Development Record</h2>
+
+<p>This project used AI tools (Copilot/ChatGPT) to:</p>
+<ul>
+<li>Generate distribution functions</li>
+<li>Create graphs and probability calculations</li>
+<li>Optimize code and debugging</li>
+</ul>
+
+<p><b>Paste your AI chat links here</b></p>
+
+</section>
+
+<script>
+
+// ========= VARIABLES =========
+let chart;
+let histChart;
+let data=[];
+
+// ========= PDFs =========
+
+function normalPDF(x,m,s){
+  return (1/(s*Math.sqrt(2*Math.PI))) * Math.exp(-0.5*((x-m)/s)**2);
+}
+
+function uniformPDF(x,a,b){
+  if(x<a||x>b) return 0;
+  return 1/(b-a);
+}
+
+function triangularPDF(x,a,b,c){
+  if(x<a||x>b) return 0;
+  if(x<=c) return 2*(x-a)/((b-a)*(c-a));
+  return 2*(b-x)/((b-a)*(b-c));
+}
+
+function linearPDF(x,a,b){
+  if(x<a||x>b) return 0;
+  return 2*(x-a)/((b-a)*(b-a));
+}
+
+function piecewisePDF(x){
+  if(x>=0 && x<2) return 0.3;
+  if(x>=2 && x<5) return 0.14;
+  return 0;
+}
+
+// ========= INTEGRATION =========
+
+function integrate(f,A,B){
+  let dx=(B-A)/1000;
+  let sum=0;
+  for(let i=0;i<1000;i++){
+    let x=A+i*dx;
+    sum+=f(x)*dx;
+  }
+  return sum;
+}
+
+// ========= DRAW C8 =========
+
+function draw(){
+
+  let type=document.getElementById("distType").value;
+  let p1=parseFloat(document.getElementById("p1").value);
+  let p2=parseFloat(document.getElementById("p2").value);
+  let p3=parseFloat(document.getElementById("p3").value);
+
+  let A=parseFloat(document.getElementById("a").value);
+  let B=parseFloat(document.getElementById("b").value);
+
+  let xs=[], ys=[], shade=[];
+  let f;
+
+  if(type==="normal") f=(x)=>normalPDF(x,p1,p2);
+  if(type==="uniform") f=(x)=>uniformPDF(x,p1,p2);
+  if(type==="triangular") f=(x)=>triangularPDF(x,p1,p2,p3);
+  if(type==="linear") f=(x)=>linearPDF(x,p1,p2);
+  if(type==="piecewise") f=(x)=>piecewisePDF(x);
+
+  for(let x=-10;x<=10;x+=0.1){
+    xs.push(x);
+    let y=f(x);
+    ys.push(y);
+    shade.push((x>=A && x<=B)?y:null);
+  }
+
+  let prob=integrate(f,A,B);
+
+  document.getElementById("result").innerText =
+    "P("+A+" < X < "+B+") = "+prob.toFixed(4);
+
+  if(chart) chart.destroy();
+
+  chart=new Chart(document.getElementById("chart"),{
+    type:"line",
+    data:{
+      labels:xs,
+      datasets:[
+        {label:"PDF", data:ys, borderColor:"blue"},
+        {label:"Area", data:shade, backgroundColor:"rgba(255,0,0,0.4)", fill:true}
+      ]
+    }
+  });
+}
+
+// ========= C9 =========
+
+function loadData(){
+  let file=document.getElementById("fileInput").files[0];
+  let reader=new FileReader();
+
+  reader.onload=function(e){
+    data=e.target.result
+      .split("\n")
+      .map(Number)
+      .filter(x=>!isNaN(x));
+    analyzeData();
+  };
+
+  reader.readAsText(file);
+}
+
+// ========= STATS =========
+
+function mean(d){ return d.reduce((a,b)=>a+b)/d.length; }
+
+function std(d){
+  let m=mean(d);
+  return Math.sqrt(d.map(x=>(x-m)**2).reduce((a,b)=>a+b)/d.length);
+}
+
+// ========= HISTOGRAM =========
+
+function histogram(d,bins=10){
+  let min=Math.min(...d);
+  let max=Math.max(...d);
+  let width=(max-min)/bins;
+
+  let hist=new Array(bins).fill(0);
+
+  d.forEach(x=>{
+    let i=Math.min(Math.floor((x-min)/width),bins-1);
+    hist[i]++;
+  });
+
+  let labels=[];
+  for(let i=0;i<bins;i++){
+    labels.push((min+i*width).toFixed(1));
+  }
+
+  return {labels,hist};
+}
+
+// ========= ANALYZE =========
+
+function analyzeData(){
+  let m=mean(data);
+  let s=std(data);
+
+  let h=histogram(data);
+
+  let xs=[], pdf=[];
+
+  let min=Math.min(...data);
+  let max=Math.max(...data);
+
+  for(let x=min;x<=max;x+=0.1){
+    xs.push(x);
+    pdf.push(normalPDF(x,m,s)*data.length*0.1);
+  }
+
+  if(histChart) histChart.destroy();
+
+  histChart=new Chart(document.getElementById("histChart"),{
+    data:{
+      labels:h.labels,
+      datasets:[
+        {type:"bar", data:h.hist, backgroundColor:"lightblue", label:"Histogram"},
+        {type:"line", data:pdf, borderColor:"red", label:"Normal Fit"}
+      ]
+    }
+  });
+
+  document.getElementById("analysis").innerText =
+  "Mean = "+m.toFixed(2)+" | Std = "+s.toFixed(2)+
+  "\nInterpretation: If symmetric → normal works best. If irregular → piecewise/linear better.";
+}
+
+</script>
+
+</body>
+</html>
