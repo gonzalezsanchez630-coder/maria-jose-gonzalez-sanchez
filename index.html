@@ -3,13 +3,11 @@
 <head>
   <title>Probability Modeling Tool</title>
 
-  <script 
-   src="https://cdn.jsdelivr.net/npm/chart.js"
-  ></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
-      font-family: Arial;
+      font-family: Arial, sans-serif;
       text-align: center;
       background: #f5f7fa;
     }
@@ -32,6 +30,10 @@
       color: white;
       border: none;
       border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #2980b9;
     }
     canvas {
       max-width: 700px;
@@ -39,176 +41,174 @@
     }
   </style>
 </head>
-
 <body>
 
 <h1>Probability Modeling Tool (C8 + C9)</h1>
 
-<!-- ================= C8 ================= -->
 <section>
-<h2>Simulation Mode (C8)</h2>
+  <h2>Simulation Mode (C8)</h2>
 
-<select id="distType">
-  <option value="normal">Normal</option>
-  <option value="uniform">Uniform</option>
-  <option value="triangular">Triangular</option>
-  <option value="linear">Linear</option>
-  <option value="piecewise">Piecewise</option>
-</select>
+  <select id="distType">
+    <option value="normal">Normal</option>
+    <option value="uniform">Uniform</option>
+    <option value="triangular">Triangular</option>
+    <option value="linear">Linear</option>
+    <option value="piecewise">Piecewise</option>
+  </select>
 
-<br>
+  <br>
 
-<input id="p1" value="0"> Param 1
-<input id="p2" value="1"> Param 2
-<input id="p3" value="5"> Param 3
+  <input id="p1" value="0"> Param 1
+  <input id="p2" value="1"> Param 2
+  <input id="p3" value="5"> Param 3
 
-<br><br>
+  <br><br>
 
-From: <input id="a" value="-1">
-To: <input id="b" value="1">
+  From: <input id="a" value="-1">
+  To: <input id="b" value="1">
 
-<br><br>
+  <br><br>
 
-<button onclick="draw()">Calculate</button>
+  <button onclick="draw()">Calculate</button>
 
-<canvas id="chart"></canvas>
-<h3 id="result"></h3>
-
+  <canvas id="chart"></canvas>
+  <h3 id="result"></h3>
 </section>
 
-<!-- ================= C9 ================= -->
 <section>
+  <h2>Data Modeling (C9)</h2>
 
-<h2>Data Modeling (C9)</h2>
+  <input type="file" id="fileInput" accept=".csv, .txt">
+  <button onclick="loadData()">Upload CSV</button>
 
-<input type="file" id="fileInput">
-<button onclick="loadData()">Upload CSV</button>
-
-<canvas id="histChart"></canvas>
-<h3 id="analysis"></h3>
-
+  <canvas id="histChart"></canvas>
+  <h3 id="analysis"></h3>
 </section>
 
-<!-- ================= AI ================= -->
 <section>
-<h2>AI Development Record</h2>
-
-<p>This project used AI tools (Copilot/ChatGPT) to:</p>
-<ul>
-<li>Generate distribution functions</li>
-<li>Create graphs and probability calculations</li>
-<li>Optimize code and debugging</li>
-</ul>
-
-<p><b>Paste your AI chat links here</b></p>
-
+  <h2>AI Development Record</h2>
+  <p>This project used AI tools (Copilot/ChatGPT) to:</p>
+  <ul>
+    <li>Generate distribution functions</li>
+    <li>Create graphs and probability calculations</li>
+    <li>Optimize code and debugging</li>
+  </ul>
+  <p><b>Paste your AI chat links here</b></p>
 </section>
 
 <script>
-
 // ========= VARIABLES =========
 let chart;
 let histChart;
-let data=[];
+let data = [];
 
 // ========= PDFs =========
-
-function normalPDF(x,m,s){
-  return (1/(s*Math.sqrt(2*Math.PI))) * Math.exp(-0.5*((x-m)/s)**2);
+function normalPDF(x, m, s) {
+  return (1 / (s * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * ((x - m) / s) ** 2);
 }
 
-function uniformPDF(x,a,b){
-  if(x<a||x>b) return 0;
-  return 1/(b-a);
+function uniformPDF(x, a, b) {
+  if (x < a || x > b) return 0;
+  return 1 / (b - a);
 }
 
-function triangularPDF(x,a,b,c){
-  if(x<a||x>b) return 0;
-  if(x<=c) return 2*(x-a)/((b-a)*(c-a));
-  return 2*(b-x)/((b-a)*(b-c));
+function triangularPDF(x, a, b, c) {
+  if (x < a || x > b) return 0;
+  if (x <= c) return 2 * (x - a) / ((b - a) * (c - a));
+  return 2 * (b - x) / ((b - a) * (b - c));
 }
 
-function linearPDF(x,a,b){
-  if(x<a||x>b) return 0;
-  return 2*(x-a)/((b-a)*(b-a));
+function linearPDF(x, a, b) {
+  if (x < a || x > b) return 0;
+  return 2 * (x - a) / ((b - a) * (b - a));
 }
 
-function piecewisePDF(x){
-  if(x>=0 && x<2) return 0.3;
-  if(x>=2 && x<5) return 0.14;
+function piecewisePDF(x) {
+  if (x >= 0 && x < 2) return 0.3;
+  if (x >= 2 && x < 5) return 0.14;
   return 0;
 }
 
 // ========= INTEGRATION =========
-
-function integrate(f,A,B){
-  let dx=(B-A)/1000;
-  let sum=0;
-  for(let i=0;i<1000;i++){
-    let x=A+i*dx;
-    sum+=f(x)*dx;
+function integrate(f, A, B) {
+  let dx = (B - A) / 1000;
+  let sum = 0;
+  for (let i = 0; i < 1000; i++) {
+    let x = A + i * dx;
+    sum += f(x) * dx;
   }
   return sum;
 }
 
 // ========= DRAW C8 =========
+function draw() {
+  let type = document.getElementById("distType").value;
+  let p1 = parseFloat(document.getElementById("p1").value);
+  let p2 = parseFloat(document.getElementById("p2").value);
+  let p3 = parseFloat(document.getElementById("p3").value);
 
-function draw(){
+  let A = parseFloat(document.getElementById("a").value);
+  let B = parseFloat(document.getElementById("b").value);
 
-  let type=document.getElementById("distType").value;
-  let p1=parseFloat(document.getElementById("p1").value);
-  let p2=parseFloat(document.getElementById("p2").value);
-  let p3=parseFloat(document.getElementById("p3").value);
-
-  let A=parseFloat(document.getElementById("a").value);
-  let B=parseFloat(document.getElementById("b").value);
-
-  let xs=[], ys=[], shade=[];
+  let xs = [], ys = [], shade = [];
   let f;
 
-  if(type==="normal") f=(x)=>normalPDF(x,p1,p2);
-  if(type==="uniform") f=(x)=>uniformPDF(x,p1,p2);
-  if(type==="triangular") f=(x)=>triangularPDF(x,p1,p2,p3);
-  if(type==="linear") f=(x)=>linearPDF(x,p1,p2);
-  if(type==="piecewise") f=(x)=>piecewisePDF(x);
+  if (type === "normal") f = (x) => normalPDF(x, p1, p2);
+  if (type === "uniform") f = (x) => uniformPDF(x, p1, p2);
+  if (type === "triangular") f = (x) => triangularPDF(x, p1, p2, p3);
+  if (type === "linear") f = (x) => linearPDF(x, p1, p2);
+  if (type === "piecewise") f = (x) => piecewisePDF(x);
 
-  for(let x=-10;x<=10;x+=0.1){
-    xs.push(x);
-    let y=f(x);
+  for (let x = -10; x <= 10; x += 0.1) {
+    xs.push(x.toFixed(1));
+    let y = f(x);
     ys.push(y);
-    shade.push((x>=A && x<=B)?y:null);
+    shade.push((x >= A && x <= B) ? y : null);
   }
 
-  let prob=integrate(f,A,B);
+  let prob = integrate(f, A, B);
+  document.getElementById("result").innerText = "P(" + A + " < X < " + B + ") = " + prob.toFixed(4);
 
-  document.getElementById("result").innerText =
-    "P("+A+" < X < "+B+") = "+prob.toFixed(4);
+  if (chart) chart.destroy();
 
-  if(chart) chart.destroy();
-
-  chart=new Chart(document.getElementById("chart"),{
-    type:"line",
-    data:{
-      labels:xs,
-      datasets:[
-        {label:"PDF", data:ys, borderColor:"blue"},
-        {label:"Area", data:shade, backgroundColor:"rgba(255,0,0,0.4)", fill:true}
+  chart = new Chart(document.getElementById("chart"), {
+    type: "line",
+    data: {
+      labels: xs,
+      datasets: [
+        { label: "PDF", data: ys, borderColor: "blue", pointRadius: 0 },
+        { label: "Area", data: shade, backgroundColor: "rgba(255,0,0,0.4)", fill: true, pointRadius: 0 }
       ]
     }
   });
 }
 
-// ========= C9 =========
+// ========= C9 LOAD DATA =========
+function loadData() {
+  let fileInput = document.getElementById("fileInput");
+  
+  // CONTROL DE ERRORES: Valida si el usuario presionó el botón sin cargar nada
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("Por favor, selecciona un archivo CSV o TXT primero.");
+    return;
+  }
 
-function loadData(){
-  let file=document.getElementById("fileInput").files[0];
-  let reader=new FileReader();
+  let file = fileInput.files[0];
+  let reader = new FileReader();
 
-  reader.onload=function(e){
-    data=e.target.result
-      .split("\n")
-      .map(Number)
-      .filter(x=>!isNaN(x));
+  reader.onload = function(e) {
+    let text = e.target.result;
+    
+    // EXPRESIÓN REGULAR: Separa strings por comas, punto y comas, espacios o saltos de línea
+    data = text.split(/[\n,;\r]+/)
+               .map(x => parseFloat(x.trim()))
+               .filter(x => !isNaN(x));
+
+    if (data.length === 0) {
+      alert("No se pudieron extraer datos numéricos válidos del archivo. Asegúrate de que no sea un archivo binario (Excel/Word).");
+      return;
+    }
+
     analyzeData();
   };
 
@@ -216,71 +216,72 @@ function loadData(){
 }
 
 // ========= STATS =========
+function mean(d) { return d.reduce((a, b) => a + b, 0) / d.length; }
 
-function mean(d){ return d.reduce((a,b)=>a+b)/d.length; }
-
-function std(d){
-  let m=mean(d);
-  return Math.sqrt(d.map(x=>(x-m)**2).reduce((a,b)=>a+b)/d.length);
+// Se inicializa el acumulador en 0 para evitar errores de tipo si cambia la estructura
+function std(d) {
+  let m = mean(d);
+  return Math.sqrt(d.map(x => (x - m) ** 2).reduce((a, b) => a + b, 0) / d.length);
 }
 
 // ========= HISTOGRAM =========
+function histogram(d, bins = 10) {
+  let min = Math.min(...d);
+  let max = Math.max(...d);
+  let width = (max - min) / bins;
 
-function histogram(d,bins=10){
-  let min=Math.min(...d);
-  let max=Math.max(...d);
-  let width=(max-min)/bins;
+  let hist = new Array(bins).fill(0);
 
-  let hist=new Array(bins).fill(0);
-
-  d.forEach(x=>{
-    let i=Math.min(Math.floor((x-min)/width),bins-1);
+  d.forEach(x => {
+    let i = Math.floor((x - min) / width);
+    if (i >= bins) i = bins - 1; // Maneja el límite superior estricto
     hist[i]++;
   });
 
-  let labels=[];
-  for(let i=0;i<bins;i++){
-    labels.push((min+i*width).toFixed(1));
+  let labels = [];
+  let centers = []; // Puntos centrales de cada bin para que la campana de Gauss encaje perfectamente
+  for (let i = 0; i < bins; i++) {
+    let currentMin = min + i * width;
+    let currentMax = currentMin + width;
+    labels.push(currentMin.toFixed(1) + " a " + currentMax.toFixed(1));
+    centers.push(currentMin + (width / 2));
   }
 
-  return {labels,hist};
+  return { labels, hist, centers, width };
 }
 
-// ========= ANALYZE =========
+// ========= ANALYZE & PLOT C9 =========
+function analyzeData() {
+  let m = mean(data);
+  let s = std(data);
+  
+  let numBins = 10;
+  let h = histogram(data, numBins);
 
-function analyzeData(){
-  let m=mean(data);
-  let s=std(data);
+  // OPTIMIZACIÓN: Se calcula la curva en los centros exactos de las barras y se escala a frecuencia absoluta
+  let pdfFit = h.centers.map(x => normalPDF(x, m, s) * data.length * h.width);
 
-  let h=histogram(data);
+  if (histChart) histChart.destroy();
 
-  let xs=[], pdf=[];
-
-  let min=Math.min(...data);
-  let max=Math.max(...data);
-
-  for(let x=min;x<=max;x+=0.1){
-    xs.push(x);
-    pdf.push(normalPDF(x,m,s)*data.length*0.1);
-  }
-
-  if(histChart) histChart.destroy();
-
-  histChart=new Chart(document.getElementById("histChart"),{
-    data:{
-      labels:h.labels,
-      datasets:[
-        {type:"bar", data:h.hist, backgroundColor:"lightblue", label:"Histogram"},
-        {type:"line", data:pdf, borderColor:"red", label:"Normal Fit"}
+  histChart = new Chart(document.getElementById("histChart"), {
+    data: {
+      labels: h.labels,
+      datasets: [
+        { type: "bar", data: h.hist, backgroundColor: "lightblue", label: "Histogram Freq" },
+        { type: "line", data: pdfFit, borderColor: "red", label: "Normal Fit", tension: 0.2 }
       ]
+    },
+    options: {
+      scales: {
+        y: { beginAtZero: true }
+      }
     }
   });
 
   document.getElementById("analysis").innerText =
-  "Mean = "+m.toFixed(2)+" | Std = "+s.toFixed(2)+
-  "\nInterpretation: If symmetric → normal works best. If irregular → piecewise/linear better.";
+    "Mean = " + m.toFixed(2) + " | Std = " + s.toFixed(2) +
+    "\nInterpretation: If symmetric → normal works best. If irregular → piecewise/linear better.";
 }
-
 </script>
 
 </body>
